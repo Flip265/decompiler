@@ -1,10 +1,5 @@
 --[[
-	Dex++
-	Version 3.1
-	
-	Developed by Chillz
-	Decompiler fixed + rspy plugin + adonis bypass by mcdaggitt,
-	Dex++ is a revival of Moon's Dex, made to fulfill Moon's Dex prophecy.
+	flip made this
 ]]
 
 local selection
