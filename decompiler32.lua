@@ -46,64 +46,6 @@ cloneref = cloneref or function(ref)
 	return f.invalidate
 end
 
--- Terrain saving initialization (lazy-loaded to avoid startup lag)
-local terrainGridData = {}
-local terrainCaptured = false
-
-local function CaptureTerrainData()
-	if terrainCaptured then return end
-	terrainCaptured = true
-	
-	local realcheck = true
-	local imagonnaaddmorecheck, _ = pcall(function()
-		gethiddenproperty(workspace.Terrain, "SmoothGrid")
-	end)
-
-	if not imagonnaaddmorecheck then
-		realcheck = false
-	end
-
-	if gethiddenproperty and realcheck then
-		local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-		local function to_base64(data)
-			local result, bit_table = {}, {}
-			for i = 1, #data do
-				local byte = data:byte(i)
-				local bits = {}
-				for j = 7, 0, -1 do
-					bits[#bits + 1] = (math.floor(byte / (2 ^ j)) % 2 == 1) and '1' or '0'
-				end
-				bit_table[#bit_table + 1] = table.concat(bits)
-			end
-
-			local bit_string = table.concat(bit_table)
-			bit_string = bit_string .. string.rep('0', (6 - #bit_string % 6) % 6)
-
-			for i = 1, #bit_string, 6 do
-				local chunk = bit_string:sub(i, i + 5)
-				local index = tonumber(chunk, 2) + 1
-				result[#result + 1] = b:sub(index, index)
-			end
-
-			local padding = (#data % 3 == 1 and '==') or (#data % 3 == 2 and '=' or '')
-			return table.concat(result) .. padding
-		end
-
-		pcall(function()
-			local physicsGridRaw = gethiddenproperty(workspace.Terrain, "PhysicsGrid")
-			local smoothGridRaw = gethiddenproperty(workspace.Terrain, "SmoothGrid")
-
-			terrainGridData.physicsgrid = to_base64(physicsGridRaw)
-			terrainGridData.smoothgrid = to_base64(smoothGridRaw)
-			terrainGridData.realcheck = true
-			print("[Terrain] Captured terrain data successfully")
-		end)
-	else
-		terrainGridData.realcheck = false
-		print("[Terrain] gethiddenproperty unavailable or failed")
-	end
-end
-
 local EmbeddedModules = {
 ["Console"] = function()
 
@@ -13201,20 +13143,7 @@ local function main()
 		MaxThreads = 3,
 		ShowStatus = true,
 		IgnoreDefaultProps = true,
-		IsolateStarterPlayer = true,
-		SaveTerrain = false,
-		TerrainPhysicsGrid = nil,
-		TerrainSmoothGrid = nil
-	}
-	
-	local function AddCheckbox(title, default)
-		local frame = Lib.Frame.new()
-		frame.Gui.Parent = ListFrame
-		frame.Gui.Transparency = 1
-		frame.Gui.Size = UDim2.new(1,0,0,20)
-		
-		local listlayout = Instance.new("UIListLayout")
-		listlayout.Parent = frame.Gui
+			IsolateStarterPlayer = true
 		listlayout.FillDirection = Enum.FillDirection.Horizontal
 		listlayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 		listlayout.VerticalAlignment = Enum.VerticalAlignment.Center
@@ -13342,11 +13271,6 @@ local function main()
 			SaveInstanceArgs.Decompile = Decompile.Toggled
 		end)
 		
-		local SaveTerrain = AddCheckbox("Save Terrain", SaveInstanceArgs.SaveTerrain)
-		SaveTerrain.OnInput:Connect(function()
-			SaveInstanceArgs.SaveTerrain = SaveTerrain.Toggled
-		end)
-		
 		local decompileTimeout = AddTextbox("Decompile Timeout (s)", SaveInstanceArgs.DecompileTimeout, 15)
 		decompileTimeout.TextBox.FocusLost:Connect(function()
 			SaveInstanceArgs.DecompileTimeout = tonumber(decompileTimeout.TextBox.Text)
@@ -13435,34 +13359,13 @@ local function main()
 		
 		FilenameTextBox.TextBox.Text = fileName
 		Button.MouseButton1Click:Connect(function()
-			print("[DEBUG] Save button clicked")
-			print("[DEBUG] Calling CaptureTerrainData...")
-			CaptureTerrainData()
-			print("[DEBUG] Terrain data captured. physicsgrid:", terrainGridData.physicsgrid ~= nil, "smoothgrid:", terrainGridData.smoothgrid ~= nil)
-			print("[DEBUG] SaveTerrain checkbox exists:", SaveTerrain ~= nil)
-			print("[DEBUG] SaveTerrain toggled state:", SaveTerrain.Toggled)
-			
-			SaveInstanceArgs.SaveTerrain = SaveTerrain.Toggled
-			
-			-- Make terrain data available to save function via environment
-			if SaveTerrain.Toggled and terrainGridData.physicsgrid then
-				getfenv().physicsgrid = terrainGridData.physicsgrid
-				getfenv().smoothgrid = terrainGridData.smoothgrid
-				getfenv().realcheck = true
-				print("[Terrain] Terrain data set in environment for saving")
-			else
-				print("[Terrain] Save Terrain toggled:", SaveTerrain.Toggled, "Data available:", terrainGridData.physicsgrid ~= nil)
-			end
-			
 			local fileName = FilenameTextBox.TextBox.Text:gsub("{TIMESTAMP}", os.date("%d-%m-%Y_%H-%M-%S"))
 			window:SetTitle("Save Instance - Saving")
 			local s, result = pcall(env.saveinstance, game, fileName, SaveInstanceArgs)
 			if s then
 				window:SetTitle("Save Instance - Saved")
-				print("[DEBUG] Save completed successfully")
 			else
 				window:SetTitle("Save Instance - Error")
-				print("[DEBUG] Save error:", result)
 				task.spawn(error("Failed to save the game: "..result))
 			end
 			task.wait(5)
