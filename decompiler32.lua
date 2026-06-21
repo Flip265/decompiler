@@ -89,14 +89,18 @@ local function CaptureTerrainData()
 			return table.concat(result) .. padding
 		end
 
-		local physicsGridRaw = gethiddenproperty(workspace.Terrain, "PhysicsGrid")
-		local smoothGridRaw = gethiddenproperty(workspace.Terrain, "SmoothGrid")
+		pcall(function()
+			local physicsGridRaw = gethiddenproperty(workspace.Terrain, "PhysicsGrid")
+			local smoothGridRaw = gethiddenproperty(workspace.Terrain, "SmoothGrid")
 
-		terrainGridData.physicsgrid = to_base64(physicsGridRaw)
-		terrainGridData.smoothgrid = to_base64(smoothGridRaw)
-		terrainGridData.realcheck = true
+			terrainGridData.physicsgrid = to_base64(physicsGridRaw)
+			terrainGridData.smoothgrid = to_base64(smoothGridRaw)
+			terrainGridData.realcheck = true
+			print("[Terrain] Captured terrain data successfully")
+		end)
 	else
 		terrainGridData.realcheck = false
+		print("[Terrain] gethiddenproperty unavailable or failed")
 	end
 end
 
@@ -13433,8 +13437,16 @@ local function main()
 		Button.MouseButton1Click:Connect(function()
 			CaptureTerrainData()
 			SaveInstanceArgs.SaveTerrain = SaveTerrain.Toggled
-			SaveInstanceArgs.TerrainPhysicsGrid = terrainGridData.physicsgrid
-			SaveInstanceArgs.TerrainSmoothGrid = terrainGridData.smoothgrid
+			
+			-- Make terrain data available to save function via environment
+			if SaveTerrain.Toggled and terrainGridData.physicsgrid then
+				getfenv().physicsgrid = terrainGridData.physicsgrid
+				getfenv().smoothgrid = terrainGridData.smoothgrid
+				getfenv().realcheck = true
+				print("[Terrain] Terrain data set in environment for saving")
+			else
+				print("[Terrain] Save Terrain toggled:", SaveTerrain.Toggled, "Data available:", terrainGridData.physicsgrid ~= nil)
+			end
 			
 			local fileName = FilenameTextBox.TextBox.Text:gsub("{TIMESTAMP}", os.date("%d-%m-%Y_%H-%M-%S"))
 			window:SetTitle("Save Instance - Saving")
