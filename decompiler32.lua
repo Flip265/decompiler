@@ -13435,7 +13435,13 @@ local function main()
 		
 		FilenameTextBox.TextBox.Text = fileName
 		Button.MouseButton1Click:Connect(function()
+			print("[DEBUG] Save button clicked")
+			print("[DEBUG] Calling CaptureTerrainData...")
 			CaptureTerrainData()
+			print("[DEBUG] Terrain data captured. physicsgrid:", terrainGridData.physicsgrid ~= nil, "smoothgrid:", terrainGridData.smoothgrid ~= nil)
+			print("[DEBUG] SaveTerrain checkbox exists:", SaveTerrain ~= nil)
+			print("[DEBUG] SaveTerrain toggled state:", SaveTerrain.Toggled)
+			
 			SaveInstanceArgs.SaveTerrain = SaveTerrain.Toggled
 			
 			-- Make terrain data available to save function via environment
@@ -13453,8 +13459,10 @@ local function main()
 			local s, result = pcall(env.saveinstance, game, fileName, SaveInstanceArgs)
 			if s then
 				window:SetTitle("Save Instance - Saved")
+				print("[DEBUG] Save completed successfully")
 			else
 				window:SetTitle("Save Instance - Error")
+				print("[DEBUG] Save error:", result)
 				task.spawn(error("Failed to save the game: "..result))
 			end
 			task.wait(5)
